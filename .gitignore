@@ -1,0 +1,21 @@
+# Node (frontend)
+node_modules/
+dist/
+.next/
+
+# Python (backend & ml)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.env
+
+# ML (学習済みモデルは除外するが、フォルダ構造は維持)
+ml/models/*
+!ml/models/.gitkeep
+
+# OS / エディタ
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
