@@ -1,0 +1,41 @@
+{
+  "store_id": "bakery_001",
+  "store_name": "焼きたてパンの店 陽だまり",
+  "forecast_date": "2026-11-09",
+  "weather": {
+    "summary": "雨のち曇り",
+    "temp_max": 16.5,
+    "temp_diff": -4.2,
+    "rain_risk_evening": true
+  },
+  "alerts": [
+    {
+      "item_id": 101,
+      "item_name": "自家製カレーパン",
+      "price": 240,
+      "baked_count": 50,
+      "predicted_unsold": 18,
+      "risk_level": "HIGH",
+      "action": {
+        "timing": "15:00",
+        "discount_rate": 30,
+        "discounted_price": 168,
+        "reason": "16時以降の降雨により、夕方の会社帰り需要が大幅減の見込み"
+      }
+    },
+    {
+      "item_id": 102,
+      "item_name": "ミックスサンドイッチ",
+      "price": 380,
+      "baked_count": 30,
+      "predicted_unsold": 10,
+      "risk_level": "HIGH",
+      "action": {
+        "timing": "14:30",
+        "discount_rate": 40,
+        "discounted_price": 228,
+        "reason": "消費期限が本日18時まで。湿度の高まりにより調理パンの動き鈍化予測"
+      }
+    }
+  ]
+}
