@@ -46,7 +46,7 @@ function App() {
       margin: '0 auto'
     }}>
       <header>
-        <h1>🥐 MOTTAI - {data.store_name}</h1>
+        <h1>🥐 {data.store_name}</h1>
 
         <div style={{ color: '#d9534f', fontWeight: 'bold' }}>
           ⚠️ 天気アラート:
