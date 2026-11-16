@@ -1,10 +1,12 @@
 # mottai/backend/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import requests
+from datetime import datetime
+from predictor import BreadPredictor
 
 app = FastAPI(title="MOTTAI API")
 
-# C君のフロントエンドからの通信を許可する設定
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -13,43 +15,80 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# AIモデルの読み込み
+predictor = BreadPredictor("model.pkl")
+
+# 想定店舗（山口市周辺の座標例）
+LATITUDE = 34.178
+LONGITUDE = 131.473
+
 @app.get("/api/dashboard")
 def get_dashboard():
-    # まずは固定のモックデータを返す
+    # 1. リアル気象データの取得（Open-Meteo）
+    weather_url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": LATITUDE,
+        "longitude": LONGITUDE,
+        "daily": ["weather_code", "temperature_2m_max", "precipitation_sum"],
+        "timezone": "Asia/Tokyo"
+    }
+    res = requests.get(weather_url, params=params).json()
+    
+    today_temp_max = res["daily"]["temperature_2m_max"][0]
+    today_rain_sum = res["daily"]["precipitation_sum"][0]
+    is_rainy = 1 if today_rain_sum > 1.0 else 0
+
+    now = datetime.now()
+    day_of_week = now.weekday()
+    is_weekend = 1 if day_of_week in [5, 6] else 0
+
+    # 2. 店舗の商品一覧（本日の仕込み数）
+    items = [
+        {"item_id": 101, "item_name": "自家製カレーパン", "baked_count": 50, "base_price": 240},
+        {"item_id": 102, "item_name": "ミックスサンドイッチ", "baked_count": 30, "base_price": 380},
+    ]
+
+    # 3. AIによる予測と割引判定
+    alerts = []
+    for item in items:
+        # A君のAIモデルで余剰数を予測
+        unsold_pred = predictor.predict_unsold(
+            item_id=item["item_id"],
+            day_of_week=day_of_week,
+            is_weekend=is_weekend,
+            temp_max=today_temp_max,
+            is_rainy=is_rainy,
+            baked_count=item["baked_count"]
+        )
+
+        # 売れ残り率が30%以上なら警告
+        unsold_rate = unsold_pred / item["baked_count"]
+        risk_level = "HIGH" if unsold_rate >= 0.3 else "LOW"
+
+        # 割引ルールの適用
+        discount_rate = 30 if unsold_rate >= 0.3 else 10
+        target_time = "15:00" if unsold_rate >= 0.3 else "17:00"
+
+        alerts.append({
+            "item_id": item["item_id"],
+            "item_name": item["item_name"],
+            "price": item["base_price"],
+            "baked_count": item["baked_count"],
+            "predicted_unsold": unsold_pred,
+            "risk_level": risk_level,
+            "action": {
+                "discount_rate": discount_rate,
+                "target_time": target_time,
+                "reason": f"予想降水量 {today_rain_sum}mm・最高気温 {today_temp_max}℃ による需要減予測"
+            }
+        })
+
     return {
         "store_name": "焼きたてパン 陽だまり",
         "weather": {
-            "summary": "夕方から本降りの雨",
-            "temp_max": 16.5,
-            "temp_diff": -4.2,
-            "rain_evening": True
+            "summary": "雨天警戒" if is_rainy else "通常天候",
+            "temp_max": today_temp_max,
+            "precipitation": today_rain_sum
         },
-        "alerts": [
-            {
-                "item_id": 101,
-                "item_name": "自家製カレーパン",
-                "price": 240,
-                "baked_count": 50,
-                "predicted_unsold": 18,
-                "risk_level": "HIGH",
-                "action": {
-                    "discount_rate": 30,
-                    "target_time": "15:00",
-                    "reason": "雨による夕方の客足減＋急激な冷え込み"
-                }
-            },
-            {
-                "item_id": 102,
-                "item_name": "ミックスサンドイッチ",
-                "price": 380,
-                "baked_count": 30,
-                "predicted_unsold": 12,
-                "risk_level": "HIGH",
-                "action": {
-                    "discount_rate": 40,
-                    "target_time": "14:30",
-                    "reason": "本日中消費期限。雨天時の調理パン需要減"
-                }
-            }
-        ]
+        "alerts": alerts
     }
